@@ -1,4 +1,6 @@
 import decimal
+import getpass
+import datetime
 from beancount.core import data
 from beancount.core import amount
 
@@ -264,7 +266,15 @@ def sales_invoice(entries, options_map):
         HAS_PDF_DEPS = False
 
     import os
-    import datetime
+    # datetime already imported at the top
+
+    # Get current user and timestamp for metadata
+    try:
+        current_user = getpass.getuser()
+    except Exception:
+        current_user = "Unknown"
+
+    generation_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Path setup
     # Assuming running from project root or finding templates via relative path
@@ -362,6 +372,12 @@ def sales_invoice(entries, options_map):
                         total_net=total_net,
                         total_vat=vat_amount,
                         total_gross=total_gross,
+                        metadata={
+                            "generated_at": generation_time,
+                            "generated_by": current_user,
+                            "company_name": "Min Virksomhed ApS",
+                            "invoice_id": invoice_id,
+                        },
                     )
 
                     try:

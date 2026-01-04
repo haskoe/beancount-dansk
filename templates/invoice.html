@@ -1,22 +1,76 @@
 <!DOCTYPE html>
 <html lang="da">
+
 <head>
     <meta charset="UTF-8">
     <title>Faktura {{ invoice_id }}</title>
+    <!-- PDF Metadata -->
+    <meta name="author" content="{{ metadata.generated_by }}">
+    <meta name="dcterms.created" content="{{ metadata.generated_at }}">
+    <meta name="description" content="Faktura {{ metadata.invoice_id }} fra {{ metadata.company_name }}">
+    <meta name="generator" content="Beancount Danish Invoice Plugin">
+    <meta name="keywords" content="Faktura, {{ metadata.invoice_id }}, {{ client_name }}">
     <style>
-        body { font-family: Helvetica, Arial, sans-serif; color: #333; }
-        .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 50px; }
-        .sender-details { font-size: 0.9em; }
-        .invoice-details { text-align: right; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background-color: #f8f8f8; }
-        .totals { float: right; width: 300px; }
-        .totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
-        .bold { font-weight: bold; }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            color: #333;
+        }
+
+        .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #eee;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 50px;
+        }
+
+        .sender-details {
+            font-size: 0.9em;
+        }
+
+        .invoice-details {
+            text-align: right;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f8f8f8;
+        }
+
+        .totals {
+            float: right;
+            width: 300px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body>
     <div class="invoice-box">
         <div class="header">
@@ -76,11 +130,12 @@
                 <span>{{ total_gross }} DKK</span>
             </div>
         </div>
-        
+
         <div style="clear:both; padding-top: 50px;">
             <p>Tak for samarbejdet.</p>
             <p>Beløbet bedes overført til reg. nr. 1234 konto 1234567890 inden forfald.</p>
         </div>
     </div>
 </body>
+
 </html>
