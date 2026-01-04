@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Faktura {{ invoice_id }}</title>
+    <style>
+        body { font-family: Helvetica, Arial, sans-serif; color: #333; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 50px; }
+        .sender-details { font-size: 0.9em; }
+        .invoice-details { text-align: right; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f8f8; }
+        .totals { float: right; width: 300px; }
+        .totals-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .bold { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="invoice-box">
+        <div class="header">
+            <div class="sender-details">
+                <strong>Min Virksomhed ApS</strong><br>
+                Adressevej 1<br>
+                1234 København K<br>
+                CVR: 12345678
+            </div>
+            <div class="invoice-details">
+                <h1>Faktura</h1>
+                <p><strong>Faktura nr:</strong> {{ invoice_id }}</p>
+                <p><strong>Dato:</strong> {{ date }}</p>
+                <p><strong>Forfald:</strong> {{ due_date }}</p>
+            </div>
+        </div>
+
+        <div class="client-details">
+            <strong>Faktureres til:</strong><br>
+            {{ client_name }}
+        </div>
+
+        <br><br>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Beskrivelse</th>
+                    <th>Antal</th>
+                    <th>Enhedspris</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.desc }}</td>
+                    <td>{{ item.qty }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>{{ item.line_total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="totals-row">
+                <span>Subtotal (ex. moms):</span>
+                <span>{{ total_net }} DKK</span>
+            </div>
+            <div class="totals-row">
+                <span>Moms (25%):</span>
+                <span>{{ total_vat }} DKK</span>
+            </div>
+            <div class="totals-row bold">
+                <span>Total at betale:</span>
+                <span>{{ total_gross }} DKK</span>
+            </div>
+        </div>
+        
+        <div style="clear:both; padding-top: 50px;">
+            <p>Tak for samarbejdet.</p>
+            <p>Beløbet bedes overført til reg. nr. 1234 konto 1234567890 inden forfald.</p>
+        </div>
+    </div>
+</body>
+</html>

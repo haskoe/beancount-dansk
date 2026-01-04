@@ -1,0 +1,51 @@
+option "title" "Danish Company Accounting"
+option "operating_currency" "DKK"
+option "documents" "bilag"
+
+; Plugin configuration
+plugin "plugins.danish_plugins"
+
+; 3. DANSK STANDARD KONTOPLAN
+1900-01-01 open Assets:Bank:Erhverv         DKK
+1900-01-01 open Assets:Moms:Koebs           DKK
+1900-01-01 open Assets:Debitorer            DKK
+
+1900-01-01 open Liabilities:Moms:Salgs      DKK
+
+1900-01-01 open Expenses:Personnel:Mileage  DKK
+
+1900-01-01 open Income:Salg:Momspligtigt    DKK
+
+1900-01-01 open Equity:Opening-Balances     DKK
+
+; 4. RAPPORTERING
+1900-01-01 custom "fava-option" "language" "da"
+
+; Moms-oversigt
+1900-01-01 query "moms-oversigt" "
+  SELECT account, sum(position) 
+  WHERE account ~ 'Moms' 
+  GROUP BY account
+"
+
+; Forfaldne fakturaer (hvor due_date er overskredet og konto er Debitorer)
+1900-01-01 query "forfaldne-fakturaer" "
+  SELECT date, description, position, balance 
+  WHERE account ~ 'Debitorer' 
+  AND meta('due_date') < CAST(today() AS STRING)
+"
+
+; Kørselsregnskab (Akkumuleret udbetaling i år)
+1900-01-01 query "koersel-i-aar" "
+  SELECT sum(position) 
+  WHERE account ~ 'Mileage' 
+  AND year(date) = year(today())
+"
+
+; 5. TRANSAKTIONER (Årsopdelt)
+include "2021/*.beancount"
+include "2022/*.beancount"
+include "2023/*.beancount"
+include "2024/*.beancount"
+include "2025/*.beancount"
+
