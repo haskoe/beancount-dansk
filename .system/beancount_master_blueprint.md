@@ -42,16 +42,16 @@ Automatisering: * Beregn forfaldsdato (+14 dage fra transaktionsdato) og gem som
 
 Generer professionel PDF via Jinja2 og WeasyPrint.
 
-Bogfør automatisk til Assets:Debitorer og Liabilities:Moms:Salgs.
+Bogfør automatisk til Assets:Debitorer og Liabilities:moms:salg.
 
 3. DANSK STANDARD KONTOPLAN
 Systemet skal altid inkludere eller referere til følgende konti:
 
 Assets:Bank:Erhverv
 
-Assets:Moms:Koebs
+Assets:moms:koeb
 
-Liabilities:Moms:Salgs
+Liabilities:moms:salg
 
 Assets:Debitorer
 

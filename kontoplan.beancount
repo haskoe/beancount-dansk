@@ -3,10 +3,10 @@
 ; Liabilities: what they owe to others
 
 1900-01-01 open Assets:Bank:Erhverv         DKK
-1900-01-01 open Assets:Moms:Koebs           DKK
+1900-01-01 open Assets:Moms:Koeb           DKK
 1900-01-01 open Assets:Debitorer            DKK
 
-1900-01-01 open Liabilities:Moms:Salgs      DKK
+1900-01-01 open Liabilities:Moms:Salg      DKK
 1900-01-01 open Liabilities:Kreditorer      DKK
 
 1900-01-01 open Expenses:Personnel:Mileage  DKK

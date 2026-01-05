@@ -1,0 +1,80 @@
+option "account_current_conversions" "Conversions:Current"
+option "account_current_earnings" "Earnings:Current"
+option "account_previous_balances" "Opening-Balances"
+option "account_previous_conversions" "Conversions:Previous"
+option "account_previous_earnings" "Earnings:Previous"
+option "account_unrealized_gains" "Earnings:Unrealized"
+option "allow_deprecated_none_for_tags_and_links" "False"
+option "allow_pipe_separator" "False"
+option "conversion_currency" "NOTHING"
+option "infer_tolerance_from_cost" "False"
+option "input_hash" "e879302b79d434ea5dc007c1b19fcf72"
+option "insert_pythonpath" "False"
+option "long_string_maxlines" "64"
+option "name_assets" "Assets"
+option "name_equity" "Equity"
+option "name_expenses" "Expenses"
+option "name_income" "Income"
+option "name_liabilities" "Liabilities"
+option "plugin_processing_mode" "default"
+option "render_commas" "False"
+option "title" "Danish Company Accounting"
+
+1900-01-01 open Assets:Bank:Erhverv                             DKK
+1900-01-01 open Assets:Moms:Koeb                                DKK
+1900-01-01 open Assets:Debitorer                                DKK
+1900-01-01 open Liabilities:Moms:Salg                           DKK
+1900-01-01 open Liabilities:Kreditorer                          DKK
+1900-01-01 open Expenses:Personnel:Mileage                      DKK
+1900-01-01 open Expenses:Office:Supplies                        DKK
+1900-01-01 open Expenses:Insurance                              DKK
+1900-01-01 open Expenses:Software                               DKK
+1900-01-01 open Expenses:Food                                   DKK
+1900-01-01 open Income:Salg:Momspligtigt                        DKK
+1900-01-01 open Equity:Opening-Balances                         DKK
+
+1900-01-01 query "moms-oversigt" "
+  SELECT account, sum(position) 
+  WHERE account ~ 'Moms' 
+  GROUP BY account
+"
+1900-01-01 query "forfaldne-fakturaer" "
+  SELECT date, description, position, balance 
+  WHERE account ~ 'Debitorer' 
+  AND meta('due_date') < CAST(today() AS STRING)
+"
+
+1900-01-01 custom "fava-option" "language" "da"
+
+1900-01-01 query "koersel-i-aar" "
+  SELECT sum(position) 
+  WHERE account ~ 'Mileage' 
+  AND year(date) = year(today())
+"
+
+2021-01-01 * "Åbningsbalancer 2021"
+  Assets:Bank:Erhverv       50000.00 DKK
+  Assets:Debitorer          12500.00 DKK
+  Liabilities:Moms:Salg     -2500.00 DKK
+  Liabilities:Kreditorer    -5000.00 DKK
+  Equity:Opening-Balances  -55000.00 DKK
+
+2021-02-15 * "Kontorartikler fra Daarbak" ^210215-Expenses-Office-Supplies
+  Expenses:Office:Supplies      1000 DKK
+  Assets:Moms:Koeb            250.00 DKK
+  Assets:Bank:Erhverv       -1250.00 DKK
+
+2021-03-10 * "Erhvervsforsikring Tryg" ^210310-Expenses-Insurance
+  Expenses:Insurance    5000.00 DKK
+  Assets:Bank:Erhverv  -5000.00 DKK
+
+2021-04-05 * "Adobe Creative Cloud" ^210405-Expenses-Software
+  Expenses:Software         450.00 DKK
+  Assets:Moms:Koeb        112.5000 DKK
+  Liabilities:Moms:Salg  -112.5000 DKK
+  Assets:Bank:Erhverv      -450.00 DKK
+
+2021-05-20 * "Forretningsfrokost Jensen" ^210520-Expenses-Food
+  Expenses:Food        950.0000 DKK
+  Assets:Moms:Koeb      50.0000 DKK
+  Assets:Bank:Erhverv  -1000.00 DKK

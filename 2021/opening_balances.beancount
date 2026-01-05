@@ -1,6 +1,6 @@
 2021-01-01 * "Åbningsbalancer 2021"
   Assets:Bank:Erhverv             50000.00 DKK
   Assets:Debitorer                12500.00 DKK
-  Liabilities:Moms:Salgs          -2500.00 DKK
+  Liabilities:Moms:Salg          -2500.00 DKK
   Liabilities:Kreditorer          -5000.00 DKK
   Equity:Opening-Balances        -55000.00 DKK
