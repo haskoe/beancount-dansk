@@ -23,7 +23,10 @@ chmod +x install.sh
 Projektet er organiseret efter årstal for at holde transaktionerne overskuelige.
 
 -   `20XX/`
-    -   `expenses.beancount`: Udgifter og købsmoms.
+    -   `expenses_moms.beancount`: Udgifter med moms.
+    -   `expenses_momsfri.beancount`: Udgifter uden moms.
+    -   `expenses_udland.beancount`: Udenlandske køb (u-moms).
+    -   `expenses_repraesentation.beancount`: Repræsentation.
     -   `mileage.beancount`: Kørselsregnskab.
     -   `invoices.beancount`: Salgsfakturaer.
 
@@ -42,6 +45,8 @@ Disse bør placeres i de relevante filer i årsfolderne (f.eks. `2025/expenses.b
 For at starte det visuelle dashboard:
 ```bash
 uv run fava regnskab.beancount
+# Eller hvis du får ModuleNotFoundError:
+PYTHONPATH=. uv run fava regnskab.beancount
 ```
 
 ### Queries (Terminal)
@@ -49,10 +54,10 @@ Systemet indeholder præ-definerede queries til moms og ubetalte fakturaer.
 
 ```bash
 # Moms-oversigt
-uv run bean-query regnskab.beancount ".run moms-oversigt"
+PYTHONPATH=. uv run bean-query regnskab.beancount ".run moms-oversigt"
 
 # Forfaldne fakturaer
-uv run bean-query regnskab.beancount ".run forfaldne-fakturaer"
+PYTHONPATH=. uv run bean-query regnskab.beancount ".run forfaldne-fakturaer"
 ```
 
 ---

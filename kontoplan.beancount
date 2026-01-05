@@ -10,6 +10,10 @@
 1900-01-01 open Liabilities:Kreditorer      DKK
 
 1900-01-01 open Expenses:Personnel:Mileage  DKK
+1900-01-01 open Expenses:Office:Supplies    DKK
+1900-01-01 open Expenses:Insurance          DKK
+1900-01-01 open Expenses:Software           DKK
+1900-01-01 open Expenses:Food               DKK
 
 1900-01-01 open Income:Salg:Momspligtigt    DKK
 
