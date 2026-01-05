@@ -12,9 +12,13 @@ Error = namedtuple("Error", "source message entry")
 def quick_expense(entries, options_map):
     """
     Syntax:
-    custom "quick-expense" <ExpenseAccount> <Description> <Amount> <Type> [CreditAccount]
+    custom "quick-expense" <ExpenseAccount> <Description> <Amount> <Type> [CreditAccount] [InvoiceRef] [NetAmount]
 
-    Type: "standard" (25% VAT), "restaurant" (25% deduction of VAT), "momsfri" (0% VAT)
+    Type:
+    - "standard" (25% VAT)
+    - "restaurant" (25% of VAT is deductible - representation)
+    - "momsfri" (0% VAT)
+    - "u-moms" (Reverse charge - EU/Foreign. 25% added to both purchase and sales VAT)
     """
     new_entries = []
     errors = []
@@ -22,11 +26,11 @@ def quick_expense(entries, options_map):
     for entry in entries:
         if isinstance(entry, data.Custom) and entry.type == "quick-expense":
             # Parsing arguments
-            # Expected: account, description, amount, type, [credit_account]
-            if len(entry.values) < 4 or len(entry.values) > 5:
+            # Expected: account, description, amount, type, [credit_account], [invoice_ref], [net_amount]
+            if len(entry.values) < 4 or len(entry.values) > 7:
                 errors.append(
                     Error(
-                        entry.meta, "Expected 4 or 5 arguments for quick-expense", None
+                        entry.meta, "Expected 4 to 7 arguments for quick-expense", None
                     )
                 )
                 continue
@@ -36,10 +40,18 @@ def quick_expense(entries, options_map):
             total_amount_wrapper = entry.values[2]  # ValueType
             vat_type = entry.values[3].value
 
-            # Default bank account
+            # Optional arguments
             credit_account = "Assets:Bank:Erhverv"
-            if len(entry.values) == 5:
+            if len(entry.values) >= 5:
                 credit_account = entry.values[4].value
+
+            invoice_ref = None
+            if len(entry.values) >= 6:
+                invoice_ref = entry.values[5].value
+
+            net_amount_hint = None
+            if len(entry.values) == 7:
+                net_amount_hint = entry.values[6].value
 
             total_amount = total_amount_wrapper.value
             if not isinstance(total_amount, amount.Amount):
@@ -52,39 +64,58 @@ def quick_expense(entries, options_map):
             currency = total_amount.currency
 
             # VAT Logic
-            vat_account = "Assets:Moms:Koebs"
+            vat_buy_account = "Assets:Moms:Koebs"
+            vat_sell_account = "Liabilities:Moms:Salgs"
 
             expense_posting_amount = txn_amount
-            vat_posting_amount = D(0)
+            vat_buy_posting_amount = D(0)
+            vat_sell_posting_amount = D(0)
 
             if vat_type == "standard":
                 # Reverse calculate 25% VAT.
                 # Total = Net * 1.25  => Net = Total / 1.25. VAT = Total - Net.
                 net_amount = txn_amount / D("1.25")
-                vat_posting_amount = txn_amount - net_amount
+                vat_buy_posting_amount = txn_amount - net_amount
                 expense_posting_amount = net_amount
 
             elif vat_type == "restaurant":
                 # Total = 1000. VAT included = 200.
                 # Deductible VAT = 200 * 0.25 = 50.
                 # Expense = 1000 - 50 = 950.
-
-                # Full VAT
                 net_amount = txn_amount / D("1.25")
                 full_vat = txn_amount - net_amount
-
-                # Deductible part
                 deductible_vat = full_vat * D("0.25")
-
-                vat_posting_amount = deductible_vat
+                vat_buy_posting_amount = deductible_vat
                 expense_posting_amount = txn_amount - deductible_vat
 
+            elif vat_type == "u-moms":
+                # Reverse charge. Total paid is the Net.
+                # VAT is 25% of Net, added to both buy and sell accounts.
+                expense_posting_amount = txn_amount
+                vat_buy_posting_amount = txn_amount * D("0.25")
+                vat_sell_posting_amount = -vat_buy_posting_amount
+
             elif vat_type == "momsfri":
-                vat_posting_amount = D(0)
+                vat_buy_posting_amount = D(0)
                 expense_posting_amount = txn_amount
             else:
                 errors.append(Error(entry.meta, f"Unknown VAT type: {vat_type}", None))
                 continue
+
+            # Verification of NetAmount hint if provided
+            if net_amount_hint:
+                if not isinstance(net_amount_hint, amount.Amount):
+                    errors.append(
+                        Error(entry.meta, "7th argument must be an amount", None)
+                    )
+                elif abs(net_amount_hint.number - expense_posting_amount) > D("0.05"):
+                    errors.append(
+                        Error(
+                            entry.meta,
+                            f"Net amount verification failed. Calculated: {expense_posting_amount}, Hint: {net_amount_hint.number}",
+                            None,
+                        )
+                    )
 
             # Create Postings
             postings = []
@@ -101,12 +132,12 @@ def quick_expense(entries, options_map):
                 )
             )
 
-            # 2. VAT (if any)
-            if vat_posting_amount > 0:
+            # 2. Buy VAT (if any)
+            if vat_buy_posting_amount != 0:
                 postings.append(
                     data.Posting(
-                        vat_account,
-                        amount.Amount(vat_posting_amount, currency),
+                        vat_buy_account,
+                        amount.Amount(vat_buy_posting_amount, currency),
                         None,
                         None,
                         None,
@@ -114,7 +145,20 @@ def quick_expense(entries, options_map):
                     )
                 )
 
-            # 3. Credit Account (Negative total)
+            # 3. Sell VAT (for u-moms)
+            if vat_sell_posting_amount != 0:
+                postings.append(
+                    data.Posting(
+                        vat_sell_account,
+                        amount.Amount(vat_sell_posting_amount, currency),
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                )
+
+            # 4. Credit Account (Negative total payment)
             postings.append(
                 data.Posting(
                     credit_account,
@@ -127,8 +171,18 @@ def quick_expense(entries, options_map):
             )
 
             # Create Transaction
-            # Copy specific meta tags if needed, or just standard ones
-            meta = entry.meta
+            meta = entry.meta.copy()
+            links = set()
+
+            # Automatic Link Generation: YYMMDD-AccountName
+            date_str = entry.date.strftime("%y%m%d")
+            safe_acc = expense_account.replace(":", "-")
+            auto_link = f"{date_str}-{safe_acc}"
+            links.add(auto_link)
+
+            if invoice_ref:
+                meta["invoice"] = invoice_ref
+                links.add(invoice_ref)
 
             txn = data.Transaction(
                 meta,
@@ -137,7 +191,7 @@ def quick_expense(entries, options_map):
                 None,
                 description,
                 data.EMPTY_SET,
-                data.EMPTY_SET,
+                links,
                 postings,
             )
             new_entries.append(txn)

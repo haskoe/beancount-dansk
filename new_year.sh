@@ -15,7 +15,10 @@ fi
 
 echo "Creating folder structure for year $YEAR..."
 mkdir -p "$YEAR"
-touch "$YEAR/expenses.beancount"
+touch "$YEAR/expenses_moms.beancount"
+touch "$YEAR/expenses_momsfri.beancount"
+touch "$YEAR/expenses_udland.beancount"
+touch "$YEAR/expenses_repraesentation.beancount"
 touch "$YEAR/mileage.beancount"
 touch "$YEAR/invoices.beancount"
 
