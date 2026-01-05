@@ -15,6 +15,7 @@ plugin "plugins.danish_plugins"
 2024-01-01 open Assets:Moms:Koebs           DKK
 2024-01-01 open Assets:Debitorer            DKK
 2024-01-01 open Liabilities:Moms:Salgs      DKK
+2024-01-01 open Liabilities:Kreditorer      DKK
 2024-01-01 open Expenses:Food               DKK
 2024-01-01 open Expenses:Personnel:Mileage  DKK
 2024-01-01 open Income:Salg:Momspligtigt    DKK
@@ -24,6 +25,9 @@ plugin "plugins.danish_plugins"
 
 ; 2. Custom Expense Restaurant (1000 DKK incl VAT. VAT=200. Deductible=50. Exp=950)
 2024-02-02 custom "quick-expense" Expenses:Food "Dinner" 1000.00 DKK "restaurant"
+
+; 2b. Custom Expense Kreditor (500 DKK, no VAT, credited to Kreditorer)
+2024-02-03 custom "quick-expense" Expenses:Food "Purchase" 500.00 DKK "momsfri" Liabilities:Kreditorer
 
 ; 3. Mileage 2025 (100 km @ 3.80)
 2025-03-01 custom "quick-mileage" 100 KM
@@ -81,6 +85,17 @@ def verify():
         print("   [Pass] Amounts correct")
     else:
         print("[FAIL] Restaurant Expense logic failed")
+
+    # 2b. Verify Kreditor Expense
+    t2b = next((t for t in transactions if t.narration == "Purchase"), None)
+    if t2b:
+        print("[Pass] Found Kreditor Expense Transaction")
+        postings = {p.account: p.units.number for p in t2b.postings}
+        assert postings["Liabilities:Kreditorer"] == -500
+        assert postings["Expenses:Food"] == 500
+        print("   [Pass] Amounts correct")
+    else:
+        print("[FAIL] Kreditor Expense logic failed")
 
     # 3. Verify Mileage
     t3 = next((t for t in transactions if "Mileage:" in t.narration), None)

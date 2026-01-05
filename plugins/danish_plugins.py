@@ -1,16 +1,18 @@
 import decimal
-import getpass
 import datetime
+import getpass
+from collections import namedtuple
 from beancount.core import data
 from beancount.core import amount
 
 D = decimal.Decimal
+Error = namedtuple("Error", "source message entry")
 
 
 def quick_expense(entries, options_map):
     """
     Syntax:
-    custom "quick-expense" <ExpenseAccount> <Description> <Amount> <Type>
+    custom "quick-expense" <ExpenseAccount> <Description> <Amount> <Type> [CreditAccount]
 
     Type: "standard" (25% VAT), "restaurant" (25% deduction of VAT), "momsfri" (0% VAT)
     """
@@ -20,23 +22,29 @@ def quick_expense(entries, options_map):
     for entry in entries:
         if isinstance(entry, data.Custom) and entry.type == "quick-expense":
             # Parsing arguments
-            # Expected: account, description, amount, type
-            if len(entry.values) != 4:
+            # Expected: account, description, amount, type, [credit_account]
+            if len(entry.values) < 4 or len(entry.values) > 5:
                 errors.append(
-                    data.NewError(
-                        entry.meta, "Expected 4 arguments for quick-expense", None
+                    Error(
+                        entry.meta, "Expected 4 or 5 arguments for quick-expense", None
                     )
                 )
                 continue
 
             expense_account = entry.values[0].value
             description = entry.values[1].value
-            total_amount = entry.values[2]  # Amount object
+            total_amount_wrapper = entry.values[2]  # ValueType
             vat_type = entry.values[3].value
 
+            # Default bank account
+            credit_account = "Assets:Bank:Erhverv"
+            if len(entry.values) == 5:
+                credit_account = entry.values[4].value
+
+            total_amount = total_amount_wrapper.value
             if not isinstance(total_amount, amount.Amount):
                 errors.append(
-                    data.NewError(entry.meta, "Third argument must be an amount", None)
+                    Error(entry.meta, "Third argument must be an amount", None)
                 )
                 continue
 
@@ -45,7 +53,6 @@ def quick_expense(entries, options_map):
 
             # VAT Logic
             vat_account = "Assets:Moms:Koebs"
-            bank_account = "Assets:Bank:Erhverv"
 
             expense_posting_amount = txn_amount
             vat_posting_amount = D(0)
@@ -76,9 +83,7 @@ def quick_expense(entries, options_map):
                 vat_posting_amount = D(0)
                 expense_posting_amount = txn_amount
             else:
-                errors.append(
-                    data.NewError(entry.meta, f"Unknown VAT type: {vat_type}", None)
-                )
+                errors.append(Error(entry.meta, f"Unknown VAT type: {vat_type}", None))
                 continue
 
             # Create Postings
@@ -109,10 +114,10 @@ def quick_expense(entries, options_map):
                     )
                 )
 
-            # 3. Bank (Negative total)
+            # 3. Credit Account (Negative total)
             postings.append(
                 data.Posting(
-                    bank_account,
+                    credit_account,
                     amount.Amount(-txn_amount, currency),
                     None,
                     None,
@@ -159,7 +164,7 @@ def quick_mileage(entries, options_map):
         if isinstance(entry, data.Custom) and entry.type == "quick-mileage":
             if len(entry.values) != 1:
                 errors.append(
-                    data.NewError(
+                    Error(
                         entry.meta,
                         "Expected 1 argument for quick-mileage (Distance)",
                         None,
@@ -167,17 +172,11 @@ def quick_mileage(entries, options_map):
                 )
                 continue
 
-            # Expecting Amount with unit 'KM' presumably, or just a number?
-            # Blueprint says "custom 'quick-mileage' ... Output: Beregn udbetaling og generer metadata".
-            # The tool call above implied just processing `custom`.
-            # Often users write `100 KM`.
-
-            dist_obj = entry.values[0]
+            dist_wrapper = entry.values[0]
+            dist_obj = dist_wrapper.value
             if not isinstance(dist_obj, amount.Amount):
                 errors.append(
-                    data.NewError(
-                        entry.meta, "Argument must be an amount (e.g. 100 KM)", None
-                    )
+                    Error(entry.meta, "Argument must be an amount (e.g. 100 KM)", None)
                 )
                 continue
 
@@ -187,9 +186,7 @@ def quick_mileage(entries, options_map):
             rate = RATES.get(year)
             if not rate:
                 errors.append(
-                    data.NewError(
-                        entry.meta, f"No mileage rate found for year {year}", None
-                    )
+                    Error(entry.meta, f"No mileage rate found for year {year}", None)
                 )
                 continue
 
@@ -214,10 +211,6 @@ def quick_mileage(entries, options_map):
             )
 
             # Liability/Payout (Credit Owner/Bank)
-            # Assuming paid out from Bank directly or credited to Owner.
-            # Blueprint doesn't specify Account but says "Beregn udbetaling".
-            # I will assume "Assets:Bank:Erhverv" for payout to keep it simple, or "Equity:Owner".
-            # Let's use Bank as if it was reimbursed immediately.
             postings.append(
                 data.Posting(
                     "Assets:Bank:Erhverv",
@@ -266,7 +259,6 @@ def sales_invoice(entries, options_map):
         HAS_PDF_DEPS = False
 
     import os
-    # datetime already imported at the top
 
     # Get current user and timestamp for metadata
     try:
@@ -277,8 +269,6 @@ def sales_invoice(entries, options_map):
     generation_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Path setup
-    # Assuming running from project root or finding templates via relative path
-    # We will assume CWD is the project root for simplicity in this plugin implementation
     TEMPLATE_DIR = "templates"
     OUTPUT_DIR = "bilag/salg"
 
@@ -286,7 +276,7 @@ def sales_invoice(entries, options_map):
         if isinstance(entry, data.Custom) and entry.type == "sales-invoice":
             if len(entry.values) < 4:
                 errors.append(
-                    data.NewError(
+                    Error(
                         entry.meta,
                         "Expected at least 4 arguments for sales-invoice",
                         None,
@@ -305,16 +295,14 @@ def sales_invoice(entries, options_map):
             for item_str in line_item_strs:
                 if not isinstance(item_str.value, str):
                     errors.append(
-                        data.NewError(
-                            entry.meta, f"Line item must be string: {item_str}", None
-                        )
+                        Error(entry.meta, f"Line item must be string: {item_str}", None)
                     )
                     continue
 
                 parts = item_str.value.split(";")
                 if len(parts) != 3:
                     errors.append(
-                        data.NewError(
+                        Error(
                             entry.meta,
                             f"Invalid line item format: {item_str.value}. Expected 'Desc;Qty;Price'",
                             None,
@@ -328,7 +316,7 @@ def sales_invoice(entries, options_map):
                     price = D(parts[2])
                 except (ValueError, decimal.InvalidOperation):
                     errors.append(
-                        data.NewError(
+                        Error(
                             entry.meta,
                             f"Invalid number in line item: {item_str.value}",
                             None,
@@ -385,9 +373,7 @@ def sales_invoice(entries, options_map):
                     except Exception as e:
                         # Don't crash processing, just log error
                         errors.append(
-                            data.NewError(
-                                entry.meta, f"Failed to generate PDF: {e}", None
-                            )
+                            Error(entry.meta, f"Failed to generate PDF: {e}", None)
                         )
 
             postings = []

@@ -1,0 +1,20 @@
+; Moms-oversigt
+1900-01-01 query "moms-oversigt" "
+  SELECT account, sum(position) 
+  WHERE account ~ 'Moms' 
+  GROUP BY account
+"
+
+; Forfaldne fakturaer (hvor due_date er overskredet og konto er Debitorer)
+1900-01-01 query "forfaldne-fakturaer" "
+  SELECT date, description, position, balance 
+  WHERE account ~ 'Debitorer' 
+  AND meta('due_date') < CAST(today() AS STRING)
+"
+
+; Kørselsregnskab (Akkumuleret udbetaling i år)
+1900-01-01 query "koersel-i-aar" "
+  SELECT sum(position) 
+  WHERE account ~ 'Mileage' 
+  AND year(date) = year(today())
+"
